@@ -1230,45 +1230,6 @@ class AutoTestCopter(AutoTest):
         self.fly_fence_avoid_test_radius_check(avoid_behave=1, timeout=timeout)
         self.fly_fence_avoid_test_radius_check(avoid_behave=0, timeout=timeout)
 
-    def assert_prearm_failure(self, expected_statustext, timeout=5, ignore_prearm_failures=[]):
-        seen_statustext = False
-        seen_command_ack = False
-
-        self.drain_mav()
-        tstart = self.get_sim_time_cached()
-        arm_last_send = 0
-        while True:
-            if seen_command_ack and seen_statustext:
-                break
-            now = self.get_sim_time_cached()
-            if now - tstart > timeout:
-                raise NotAchievedException(
-                    "Did not see failure-to-arm messages (statustext=%s command_ack=%s" %
-                    (seen_statustext, seen_command_ack))
-            if now - arm_last_send > 1:
-                arm_last_send = now
-                self.send_mavlink_arm_command()
-            m = self.mav.recv_match(blocking=True, timeout=1)
-            if m is None:
-                continue
-            if m.get_type() == "STATUSTEXT":
-                if expected_statustext in m.text:
-                    self.progress("Got: %s" % str(m))
-                    seen_statustext = True
-                elif "PreArm" in m.text and m.text[8:] not in ignore_prearm_failures:
-                    self.progress("Got: %s" % str(m))
-                    raise NotAchievedException("Unexpected prearm failure (%s)" % m.text)
-
-            if m.get_type() == "COMMAND_ACK":
-                print("Got: %s" % str(m))
-                if m.command == mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM:
-                    if m.result != 4:
-                        raise NotAchievedException("command-ack says we didn't fail to arm")
-                    self.progress("Got: %s" % str(m))
-                    seen_command_ack = True
-            if self.mav.motors_armed():
-                raise NotAchievedException("Armed when we shouldn't have")
-
     # fly_fence_test - fly east until you hit the horizontal circular fence
     def fly_fence_test(self, timeout=180):
         # enable fence, disable avoidance
@@ -4808,6 +4769,39 @@ class AutoTestCopter(AutoTest):
                 "Notch-per-motor peak was higher than single-notch peak %fdB > %fdB" %
                 (peakdb2, peakdb1))
 
+        # Now do it again for an octacopter
+        self.context_push()
+        ex = None
+        try:
+            self.progress("Flying Octacopter with ESC telemetry driven dynamic notches")
+            self.set_parameter("INS_HNTCH_OPTS", 0)
+            self.customise_SITL_commandline(
+                [],
+                defaults_filepath=','.join(self.model_defaults_filepath("octa")),
+                model="octa"
+            )
+            freq, vfr_hud, peakdb1 = self.hover_and_check_matched_frequency_with_fft(-10, 20, 350, reverse=True)
+
+            # now add notch-per motor and check that the peak is squashed
+            self.set_parameter("INS_HNTCH_HMNCS", 1)
+            self.set_parameter("INS_HNTCH_OPTS", 2)
+            self.reboot_sitl()
+
+            freq, vfr_hud, peakdb2 = self.hover_and_check_matched_frequency_with_fft(-15, 20, 350, reverse=True)
+
+            # notch-per-motor should do better, but check for within 5%
+            if peakdb2 * 1.05 > peakdb1:
+                raise NotAchievedException(
+                    "Notch-per-motor peak was higher than single-notch peak %fdB > %fdB" %
+                    (peakdb2, peakdb1))
+        except Exception as e:
+            self.print_exception_caught(e)
+            ex = e
+        self.context_pop()
+        self.reboot_sitl()
+        if ex is not None:
+            raise ex
+
     def hover_and_check_matched_frequency(self, dblevel=-15, minhz=200, maxhz=300, fftLength=32, peakhz=None):
         # find a motor peak
         self.takeoff(10, mode="ALT_HOLD")
@@ -4979,7 +4973,7 @@ class AutoTestCopter(AutoTest):
             self.set_parameters({
                 "INS_LOG_BAT_OPT": 2,
                 "INS_HNTCH_ENABLE": 1,
-                "INS_HNTCH_HMNCS": 3,
+                "INS_HNTCH_HMNCS": 1,
                 "INS_HNTCH_MODE": 4,
                 "INS_HNTCH_FREQ": freq,
                 "INS_HNTCH_REF": vfr_hud.throttle/100.0,
@@ -6813,9 +6807,9 @@ class AutoTestCopter(AutoTest):
             self.start_subtest("missing required yaw source")
             self.set_parameters({
                 "EK3_SRC3_YAW": 3, # External Yaw with Compass Fallback
-                "COMPASS1_USE": 0,
-                "COMPASS2_USE": 0,
-                "COMPASS3_USE": 0,
+                "COMPASS_USE": 0,
+                "COMPASS_USE2": 0,
+                "COMPASS_USE3": 0,
             })
             self.assert_prearm_failure("EK3 sources require Compass")
             self.context_pop()
@@ -7532,6 +7526,46 @@ class AutoTestCopter(AutoTest):
         if ex is not None:
             raise ex
 
+    def AP_Avoidance(self):
+        self.set_parameters({
+            "AVD_ENABLE": 1,
+            "ADSB_TYPE": 1,  # mavlink
+            "AVD_F_ACTION": 2,  # climb or descend
+        })
+        self.reboot_sitl()
+
+        self.wait_ready_to_arm()
+
+        here = self.mav.location()
+
+        self.context_push()
+
+        self.start_subtest("F_ALT_MIN zero - disabled, can't arm in face of threat")
+        self.set_parameters({
+            "AVD_F_ALT_MIN": 0,
+        })
+        self.wait_ready_to_arm()
+        self.test_adsb_send_threatening_adsb_message(here)
+        self.delay_sim_time(1)
+        self.try_arm(result=False,
+                     expect_msg="ADSB threat detected")
+
+        self.wait_ready_to_arm(timeout=60)
+
+        self.context_pop()
+
+        self.start_subtest("F_ALT_MIN 16m relative - arm in face of threat")
+        self.context_push()
+        self.set_parameters({
+            "AVD_F_ALT_MIN": int(16 + here.alt),
+        })
+        self.wait_ready_to_arm()
+        self.test_adsb_send_threatening_adsb_message(here)
+#        self.delay_sim_time(1)
+        self.arm_vehicle()
+        self.disarm_vehicle()
+        self.context_pop()
+
     def PAUSE_CONTINUE(self):
         self.load_mission("copter_mission.txt", strict=False)
 
@@ -7576,6 +7610,45 @@ class AutoTestCopter(AutoTest):
         ret.extend(self.tests1d())
         ret.extend(self.tests1e())
         return ret
+
+    def ATTITUDE_FAST(self):
+        '''ensure that when ATTITDE_FAST is set we get many messages'''
+        self.context_push()
+        ex = None
+        try:
+            old = self.get_parameter('LOG_BITMASK')
+            new = int(old) | (1 << 0)  # see defines.h
+            self.set_parameters({
+                "LOG_BITMASK": new,
+                "LOG_DISARMED": 1,
+            })
+            path = self.generate_rate_sample_log()
+
+        except Exception as e:
+            self.print_exception_caught(e)
+            ex = e
+
+        self.context_pop()
+
+        self.reboot_sitl()
+
+        if ex is not None:
+            raise ex
+
+        self.delay_sim_time(10)  # NFI why this is required
+
+        self.check_dflog_message_rates(path, {
+            'ATT': 400,
+        })
+
+    def BaseLoggingRates(self):
+        '''ensure messages come out at specific rates'''
+        path = self.generate_rate_sample_log()
+        self.delay_sim_time(10)  # NFI why this is required
+        self.check_dflog_message_rates(path, {
+            "ATT": 10,
+            "IMU": 25,
+        })
 
     def FETtecESC_flight(self):
         '''fly with servo outputs from FETtec ESC'''
@@ -7960,6 +8033,14 @@ class AutoTestCopter(AutoTest):
              "Fly Vision Position",
              self.fly_vision_position), # 24s
 
+            ("ATTITUDE_FAST",
+             "Ensure ATTITUTDE_FAST logging works",
+             self.ATTITUDE_FAST),
+
+            ("BaseLoggingRates",
+             "Ensure base logging rates as expected",
+             self.BaseLoggingRates),
+
             ("BodyFrameOdom",
              "Fly Body Frame Odometry Code",
              self.fly_body_frame_odom), # 24s
@@ -8162,6 +8243,10 @@ class AutoTestCopter(AutoTest):
             Test("GSF",
                  "Check GSF",
                  self.test_gsf),
+
+            Test("AP_Avoidance",
+                 "ADSB-based avoidance",
+                 self.AP_Avoidance),
 
             Test("SMART_RTL",
                  "Check SMART_RTL",

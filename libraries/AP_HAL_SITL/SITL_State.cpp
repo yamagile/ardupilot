@@ -59,10 +59,8 @@ void SITL_State::_set_param_default(const char *parm)
 /*
   setup for SITL handling
  */
-void SITL_State::_sitl_setup(const char *home_str)
+void SITL_State::_sitl_setup()
 {
-    _home_str = home_str;
-
 #if !defined(__CYGWIN__) && !defined(__CYGWIN64__)
     _parent_pid = getppid();
 #endif
@@ -76,7 +74,6 @@ void SITL_State::_sitl_setup(const char *home_str)
     if (_sitl != nullptr) {
         // setup some initial values
         _update_airspeed(0);
-        _update_rangefinder(0);
         if (enable_gimbal) {
             gimbal = new SITL::Gimbal(_sitl->state);
         }
@@ -167,7 +164,7 @@ void SITL_State::_fdm_input_step(void)
 
     if (_sitl != nullptr) {
         _update_airspeed(_sitl->state.airspeed);
-        _update_rangefinder(_sitl->state.range);
+        _update_rangefinder();
     }
 
     // trigger all APM timers.

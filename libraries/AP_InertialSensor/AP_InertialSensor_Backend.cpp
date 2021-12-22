@@ -1,3 +1,5 @@
+#define AP_INLINE_VECTOR_OPS
+
 #include <AP_HAL/AP_HAL.h>
 #include "AP_InertialSensor.h"
 #include "AP_InertialSensor_Backend.h"
@@ -613,7 +615,7 @@ bool AP_InertialSensor_Backend::should_log_imu_raw() const
 // log an unexpected change in a register for an IMU
 void AP_InertialSensor_Backend::log_register_change(uint32_t bus_id, const AP_HAL::Device::checkreg &reg)
 {
-    AP::logger().Write("IREG", "TimeUS,DevID,Bank,Reg,Val", "QUBBB",
+    AP::logger().Write("IREG", "TimeUS,DevID,Bank,Reg,Val", "QIBBB",
                        AP_HAL::micros64(),
                        bus_id,
                        reg.bank,

@@ -133,13 +133,13 @@ private:
     void _parse_command_line(int argc, char * const argv[]);
     void _set_param_default(const char *parm);
     void _usage(void);
-    void _sitl_setup(const char *home_str);
+    void _sitl_setup();
     void _setup_fdm(void);
     void _setup_timer(void);
     void _setup_adc(void);
 
     void set_height_agl(void);
-    void _update_rangefinder(float range_value);
+    void _update_rangefinder();
     void _set_signal_handlers(void) const;
 
     void _update_airspeed(float airspeed);
@@ -176,19 +176,7 @@ private:
     const char *_fg_address;
 
     // delay buffer variables
-    static const uint8_t mag_buffer_length = 250;
     static const uint8_t wind_buffer_length = 50;
-
-    // magnetometer delay buffer variables
-    struct readings_mag {
-        uint32_t time;
-        Vector3f data;
-    };
-    uint8_t store_index_mag;
-    uint32_t last_store_time_mag;
-    VectorN<readings_mag,mag_buffer_length> buffer_mag;
-    uint32_t time_delta_mag;
-    uint32_t delayed_time_mag;
 
     // airspeed sensor delay buffer variables
     struct readings_wind {
@@ -287,11 +275,15 @@ private:
     
     const char *defaults_path = HAL_PARAM_DEFAULTS_PATH;
 
-    const char *_home_str;
     char *_gps_fifo[2];
 
     // simulated GPS devices
     SITL::GPS *gps[2];  // constrained by # of parameter sets
+
+    // returns a voltage between 0V to 5V which should appear as the
+    // voltage from the sensor
+    float _sonar_pin_voltage() const;
+
 };
 
 #endif // defined(HAL_BUILD_AP_PERIPH)
