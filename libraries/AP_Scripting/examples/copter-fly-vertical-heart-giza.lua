@@ -65,7 +65,7 @@ function update()
         count = count + 1
         if (count >= 10) then
           sub_count = sub_count + 1
-          count = 0;
+          count = 0
         end
         if (sub_stage == 0) then
           if (sub_count > 20) then
