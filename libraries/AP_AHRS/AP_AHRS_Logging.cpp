@@ -63,12 +63,12 @@ void AP_AHRS::Write_Attitude(const Vector3f &targets) const
     AP::logger().WriteBlock(&pkt, sizeof(pkt));
 }
 
-void AP_AHRS::Write_Origin(uint8_t origin_type, const Location &loc) const
+void AP_AHRS::Write_Origin(LogOriginType origin_type, const Location &loc) const
 {
     const struct log_ORGN pkt{
         LOG_PACKET_HEADER_INIT(LOG_ORGN_MSG),
         time_us     : AP_HAL::micros64(),
-        origin_type : origin_type,
+        origin_type : (uint8_t)origin_type,
         latitude    : loc.lat,
         longitude   : loc.lng,
         altitude    : loc.alt
@@ -127,13 +127,13 @@ void AP_AHRS_View::Write_Rate(const AP_Motors &motors, const AC_AttitudeControl 
         time_us         : AP_HAL::micros64(),
         control_roll    : degrees(rate_targets.x),
         roll            : degrees(get_gyro().x),
-        roll_out        : motors.get_roll(),
+        roll_out        : motors.get_roll()+motors.get_roll_ff(),
         control_pitch   : degrees(rate_targets.y),
         pitch           : degrees(get_gyro().y),
-        pitch_out       : motors.get_pitch(),
+        pitch_out       : motors.get_pitch()+motors.get_pitch_ff(),
         control_yaw     : degrees(rate_targets.z),
         yaw             : degrees(get_gyro().z),
-        yaw_out         : motors.get_yaw(),
+        yaw_out         : motors.get_yaw()+motors.get_yaw_ff(),
         control_accel   : (float)accel_target.z,
         accel           : (float)(-(get_accel_ef_blended().z + GRAVITY_MSS) * 100.0f),
         accel_out       : motors.get_throttle()

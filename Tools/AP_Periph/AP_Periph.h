@@ -46,11 +46,6 @@
     #endif
 #endif
 
-#if defined(HAL_PERIPH_ENABLE_BATTERY_MPPT_PACKETDIGITAL) && HAL_MAX_CAN_PROTOCOL_DRIVERS < 2
-#error "Battery MPPT PacketDigital driver requires at least two CAN Ports"
-#endif
-
-
 #include "Parameters.h"
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
@@ -194,6 +189,12 @@ public:
 #endif
 
 #ifdef HAL_PERIPH_ENABLE_RC_OUT
+#if HAL_WITH_ESC_TELEM
+    AP_ESC_Telem esc_telem;
+    uint32_t last_esc_telem_update_ms;
+    void esc_telem_update();
+#endif
+
     SRV_Channels servo_channels;
     bool rcout_has_new_data_to_update;
 
