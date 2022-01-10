@@ -117,10 +117,10 @@ void Copter::init_ardupilot()
 
     attitude_control->parameter_sanity_check();
 
-#if OPTFLOW == ENABLED
+#if AP_OPTICALFLOW_ENABLED
     // initialise optical flow sensor
     optflow.init(MASK_LOG_OPTFLOW);
-#endif      // OPTFLOW == ENABLED
+#endif      // AP_OPTICALFLOW_ENABLED
 
 #if HAL_MOUNT_ENABLED
     // initialise camera mount
@@ -149,8 +149,10 @@ void Copter::init_ardupilot()
     // initialise rangefinder
     init_rangefinder();
 
+#if HAL_PROXIMITY_ENABLED
     // init proximity sensor
-    init_proximity();
+    g2.proximity.init();
+#endif
 
 #if BEACON_ENABLED == ENABLED
     // init beacons used for non-gps position estimation
@@ -341,7 +343,7 @@ bool Copter::ekf_has_relative_position() const
 
     // return immediately if neither optflow nor visual odometry is enabled
     bool enabled = false;
-#if OPTFLOW == ENABLED
+#if AP_OPTICALFLOW_ENABLED
     if (optflow.enabled()) {
         enabled = true;
     }

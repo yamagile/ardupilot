@@ -113,7 +113,7 @@ const AP_Scheduler::Task Copter::scheduler_tasks[] = {
     SCHED_TASK(rc_loop,              100,    130,  3),
     SCHED_TASK(throttle_loop,         50,     75,  6),
     SCHED_TASK_CLASS(AP_GPS,               &copter.gps,                 update,          50, 200,   9),
-#if OPTFLOW == ENABLED
+#if AP_OPTICALFLOW_ENABLED
     SCHED_TASK_CLASS(OpticalFlow,          &copter.optflow,             update,         200, 160,  12),
 #endif
     SCHED_TASK(update_batt_compass,   10,    120, 15),
@@ -287,6 +287,10 @@ void Copter::fast_loop()
     }
 
     AP_Vehicle::fast_loop();
+
+    if (should_log(MASK_LOG_VIDEO_STABILISATION)) {
+        ahrs.write_video_stabilisation();
+    }
 }
 
 #if AP_SCRIPTING_ENABLED
@@ -686,10 +690,9 @@ void Copter::update_altitude()
 
     if (should_log(MASK_LOG_CTUN)) {
         Log_Write_Control_Tuning();
+        AP::ins().write_notch_log_messages();
 #if HAL_GYROFFT_ENABLED
         gyro_fft.write_log_messages();
-#else
-        write_notch_log_messages();
 #endif
     }
 }

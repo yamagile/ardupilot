@@ -41,6 +41,7 @@
 #include <AP_InertialSensor/AP_InertialSensor.h>                // ArduPilot Mega Inertial Sensor (accel & gyro) Library
 #include <AP_AHRS/AP_AHRS.h>                                    // AHRS (Attitude Heading Reference System) interface library for ArduPilot
 #include <AP_Mission/AP_Mission.h>                              // Mission command library
+#include <AP_Mission/AP_Mission_ChangeDetector.h>               // Mission command change detection library
 #include <AC_AttitudeControl/AC_AttitudeControl_Multi.h>        // Attitude control library
 #include <AC_AttitudeControl/AC_AttitudeControl_Multi_6DoF.h>   // 6DoF Attitude control library
 #include <AC_AttitudeControl/AC_AttitudeControl_Heli.h>         // Attitude control library for traditional helicopter
@@ -124,9 +125,7 @@
 #if AP_TERRAIN_AVAILABLE
  # include <AP_Terrain/AP_Terrain.h>
 #endif
-#if OPTFLOW == ENABLED
  # include <AP_OpticalFlow/AP_OpticalFlow.h>
-#endif
 #if RANGEFINDER_ENABLED == ENABLED
  # include <AP_RangeFinder/AP_RangeFinder.h>
 #endif
@@ -307,7 +306,7 @@ private:
     AP_Arming_Copter arming;
 
     // Optical flow sensor
-#if OPTFLOW == ENABLED
+#if AP_OPTICALFLOW_ENABLED
     OpticalFlow optflow;
 #endif
 
@@ -866,7 +865,6 @@ private:
     void rpm_update();
     void update_optical_flow(void);
     void compass_cal_update(void);
-    void init_proximity();
 
     // RC_Channel.cpp
     void save_trim();
@@ -975,7 +973,7 @@ private:
 #if MODE_SMARTRTL_ENABLED == ENABLED
     ModeSmartRTL mode_smartrtl;
 #endif
-#if !HAL_MINIMIZE_FEATURES && OPTFLOW == ENABLED
+#if !HAL_MINIMIZE_FEATURES && AP_OPTICALFLOW_ENABLED
     ModeFlowHold mode_flowhold;
 #endif
 #if MODE_ZIGZAG_ENABLED == ENABLED

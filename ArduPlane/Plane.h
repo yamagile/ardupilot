@@ -241,7 +241,7 @@ private:
     AP_Camera camera{MASK_LOG_CAMERA};
 #endif
 
-#if OPTFLOW == ENABLED
+#if AP_OPTICALFLOW_ENABLED
     // Optical flow sensor
     OpticalFlow optflow;
 #endif
@@ -391,6 +391,9 @@ private:
 
     // Difference between current altitude and desired altitude.  Centimeters
     int32_t altitude_error_cm;
+
+    // speed scaler for control surfaces, updated at 10Hz
+    float surface_speed_scaler = 1.0;
 
     // Battery Sensors
     AP_BattMonitor battery{MASK_LOG_CURRENT,
@@ -843,7 +846,7 @@ private:
     int32_t calc_altitude_error_cm(void);
     void check_fbwb_minimum_altitude(void);
     void reset_offset_altitude(void);
-    void set_offset_altitude_location(const Location &loc);
+    void set_offset_altitude_location(const Location &start_loc, const Location &destination_loc);
     bool above_location_current(const Location &loc);
     void setup_terrain_target_alt(Location &loc) const;
     int32_t adjusted_altitude_cm(void);
@@ -858,7 +861,8 @@ private:
     void calc_throttle();
     void calc_nav_roll();
     void calc_nav_pitch();
-    float get_speed_scaler(void);
+    float calc_speed_scaler(void);
+    float get_speed_scaler(void) const { return surface_speed_scaler; }
     bool stick_mixing_enabled(void);
     void stabilize_roll(float speed_scaler);
     float stabilize_roll_get_roll_out(float speed_scaler);

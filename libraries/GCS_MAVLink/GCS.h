@@ -27,6 +27,7 @@
 #include <AP_Filesystem/AP_Filesystem_Available.h>
 #include <AP_GPS/AP_GPS.h>
 #include <AP_VisualOdom/AP_VisualOdom.h>
+#include <AP_OpticalFlow/AP_OpticalFlow.h>
 
 #include "MissionItemProtocol_Waypoints.h"
 #include "MissionItemProtocol_Rally.h"
@@ -279,7 +280,7 @@ public:
     virtual void send_nav_controller_output() const = 0;
     virtual void send_pid_tuning() = 0;
     void send_ahrs2();
-    void send_system_time();
+    void send_system_time() const;
     void send_rc_channels() const;
     void send_rc_channels_raw() const;
     void send_raw_imu();
@@ -292,7 +293,9 @@ public:
     void send_sim_state() const;
     void send_ahrs();
     void send_battery2();
+#if AP_OPTICALFLOW_ENABLED
     void send_opticalflow();
+#endif
     virtual void send_attitude() const;
     virtual void send_attitude_quaternion() const;
     void send_autopilot_version() const;
@@ -557,7 +560,9 @@ protected:
     MAV_RESULT handle_command_debug_trap(const mavlink_command_long_t &packet);
     MAV_RESULT handle_command_set_ekf_source_set(const mavlink_command_long_t &packet);
 
+#if AP_OPTICALFLOW_ENABLED
     void handle_optical_flow(const mavlink_message_t &msg);
+#endif
 
     MAV_RESULT handle_fixed_mag_cal_yaw(const mavlink_command_long_t &packet);
 
@@ -864,6 +869,7 @@ private:
     void handle_vision_position_estimate(const mavlink_message_t &msg);
     void handle_global_vision_position_estimate(const mavlink_message_t &msg);
     void handle_att_pos_mocap(const mavlink_message_t &msg);
+    void handle_odometry(const mavlink_message_t &msg);
     void handle_common_vision_position_estimate_data(const uint64_t usec,
                                                      const float x,
                                                      const float y,

@@ -1,11 +1,11 @@
 #include "Plane.h"
 
 /*
-  get a speed scaling number for control surfaces. This is applied to
-  PIDs to change the scaling of the PID with speed. At high speed we
-  move the surfaces less, and at low speeds we move them more.
+  calculate speed scaling number for control surfaces. This is applied
+  to PIDs to change the scaling of the PID with speed. At high speed
+  we move the surfaces less, and at low speeds we move them more.
  */
-float Plane::get_speed_scaler(void)
+float Plane::calc_speed_scaler(void)
 {
     float aspeed, speed_scaler;
     if (ahrs.airspeed_estimate(aspeed)) {
@@ -258,7 +258,6 @@ void Plane::stabilize_stick_mixing_fbw()
         control_mode == &mode_qhover ||
         control_mode == &mode_qloiter ||
         control_mode == &mode_qland ||
-        control_mode == &mode_qrtl ||
         control_mode == &mode_qacro ||
 #if QAUTOTUNE_ENABLED
         control_mode == &mode_qautotune ||

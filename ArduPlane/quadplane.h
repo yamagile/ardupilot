@@ -374,9 +374,6 @@ private:
 
     Location last_auto_target;
 
-    // pitch when we enter loiter mode
-    int32_t loiter_initial_pitch_cd;
-
     // when did we last run the attitude controller?
     uint32_t last_att_control_ms;
 
@@ -505,6 +502,7 @@ private:
         OPTION_DISABLE_APPROACH=(1<<16),
         OPTION_REPOSITION_LANDING=(1<<17),
         OPTION_ONLY_ARM_IN_QMODE_OR_AUTO=(1<<18),
+        OPTION_TRANS_FAIL_TO_FW=(1<<19),
     };
 
     AP_Float takeoff_failure_scalar;

@@ -3,7 +3,6 @@
 #include "AP_Logger_Backend.h"
 
 #include "AP_Logger_File.h"
-#include "AP_Logger_SITL.h"
 #include "AP_Logger_DataFlash.h"
 #include "AP_Logger_MAVLink.h"
 
@@ -45,7 +44,9 @@ extern const AP_HAL::HAL& hal;
 #endif
 
 #ifndef HAL_LOGGING_BACKENDS_DEFAULT
-# if HAL_LOGGING_DATAFLASH_ENABLED
+# if HAL_LOGGING_FILESYSTEM_ENABLED && (CONFIG_HAL_BOARD == HAL_BOARD_SITL)
+#  define HAL_LOGGING_BACKENDS_DEFAULT Backend_Type::FILESYSTEM
+# elif HAL_LOGGING_DATAFLASH_ENABLED
 #  define HAL_LOGGING_BACKENDS_DEFAULT Backend_Type::BLOCK
 # elif HAL_LOGGING_FILESYSTEM_ENABLED
 #  define HAL_LOGGING_BACKENDS_DEFAULT Backend_Type::FILESYSTEM
@@ -187,9 +188,6 @@ void AP_Logger::Init(const struct LogStructure *structures, uint8_t num_types)
 #if HAL_LOGGING_DATAFLASH_ENABLED
         { Backend_Type::BLOCK, AP_Logger_DataFlash::probe },
 #endif
-#if HAL_LOGGING_SITL_ENABLED
-        { Backend_Type::BLOCK, AP_Logger_SITL::probe },
-#endif
 #if HAL_LOGGING_MAVLINK_ENABLED
         { Backend_Type::MAVLINK, AP_Logger_MAVLink::probe },
 #endif
@@ -252,7 +250,7 @@ const char* AP_Logger::unit_name(const uint8_t unit_id)
             return _units[i].unit;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 /// return a multiplier value given its ID
@@ -1410,6 +1408,7 @@ void AP_Logger::log_file_content(const char *filename)
     const size_t len = strlen(filename)+1;
     char * tmp_filename = new char[len];
     if (tmp_filename == nullptr) {
+        delete file;
         return;
     }
     strncpy(tmp_filename, filename, len);
